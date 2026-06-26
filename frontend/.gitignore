@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# Environment variables
+.env
+
+# Vite cache
+.vite/
+
+# IDE
+.vscode/
+
+# Logs
+npm-debug.log*
