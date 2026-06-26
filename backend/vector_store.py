@@ -1,25 +1,31 @@
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 
+import os
+
+DB_PATH = "chroma_db"
+
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
+)
 
 
 def create_vector_store(chunks):
-
-
-    embeddings = HuggingFaceEmbeddings(
-
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-
+    vectordb = Chroma.from_texts(
+        texts=chunks,
+        embedding=embeddings,
+        persist_directory=DB_PATH
     )
 
+    vectordb.persist()
+    return vectordb
 
-    vector_db = FAISS.from_texts(
 
-        chunks,
+def load_vector_store():
+    if not os.path.exists(DB_PATH):
+        return None
 
-        embeddings
-
+    return Chroma(
+        persist_directory=DB_PATH,
+        embedding_function=embeddings
     )
-
-
-    return vector_db

@@ -1,152 +1,88 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import shutil
-
+import os
 
 from pdf_loader import extract_text
 from text_splitter import split_text
-from vector_store import create_vector_store
+from vector_store import create_vector_store, load_vector_store
 from llm import ask_gemini
-from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+# ---------------- CORS ----------------
 app.add_middleware(
-
     CORSMiddleware,
-
     allow_origins=[
-           "http://localhost:5173",
-            "https://your-frontend-name.vercel.app"
+        "http://localhost:5173",
+        "https://your-frontend-name.vercel.app"
     ],
-
     allow_credentials=True,
-
     allow_methods=["*"],
-
     allow_headers=["*"],
-
 )
 
+# ---------------- FOLDERS ----------------
+os.makedirs("uploads", exist_ok=True)
 
-vector_db = None
+# ---------------- REQUEST MODEL ----------------
+class ChatRequest(BaseModel):
+    question: str
 
 
-
+# ---------------- ROOT ----------------
 @app.get("/")
 def home():
-
-    return {
-
-        "message":"AI PDF Q&A Running"
-
-    }
+    return {"message": "AI PDF Q&A Running"}
 
 
-
-
+# ---------------- UPLOAD PDF ----------------
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
 
-
-    global vector_db
-
-
-
     file_path = f"uploads/{file.filename}"
 
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-
-    with open(file_path,"wb") as buffer:
-
-        shutil.copyfileobj(
-
-            file.file,
-
-            buffer
-
-        )
-
-
-
+    # Extract text
     text = extract_text(file_path)
 
-
-
+    # Split into chunks
     chunks = split_text(text)
 
-
-
-    vector_db = create_vector_store(chunks)
-
-
+    # 🔥 CREATE CHROMA DB (PERSISTENT)
+    create_vector_store(chunks)
 
     return {
-
-
-        "filename":file.filename,
-
-
-        "chunks":len(chunks),
-
-
-        "message":"PDF processed successfully"
-
+        "filename": file.filename,
+        "chunks": len(chunks),
+        "message": "PDF processed successfully"
     }
 
 
-
-
-
+# ---------------- CHAT ----------------
 @app.post("/chat")
-async def chat(question:str):
+async def chat(req: ChatRequest):
 
+    # 🔥 LOAD CHROMA DB FROM DISK
+    vector_db = load_vector_store()
 
     if vector_db is None:
+        return {"error": "Please upload PDF first"}
 
-        return {
+    # Similarity search
+    docs = vector_db.similarity_search(req.question, k=3)
 
-            "error":"Please upload PDF first"
+    # Build context
+    context = "\n".join([doc.page_content for doc in docs])
 
-        }
-
-
-
-    docs = vector_db.similarity_search(
-
-        question,
-
-        k=3
-
-    )
-
-
-
-    context = ""
-
-
-
-    for doc in docs:
-
-        context += doc.page_content + "\n"
-
-
-
-    answer = ask_gemini(
-
-        context,
-
-        question
-
-    )
-
-
+    # Ask Gemini
+    answer = ask_gemini(context, req.question)
 
     return {
-
-
-        "question":question,
-
-
-        "answer":answer
-
+        "question": req.question,
+        "answer": answer
     }
