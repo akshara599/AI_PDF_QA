@@ -1,12 +1,12 @@
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import os
 
 DB_PATH = "chroma_db"
 
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+# ✅ THIS IS THE KEY CHANGE (NO LOCAL MODEL)
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="models/embedding-001"
 )
 
 
