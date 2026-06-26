@@ -19,8 +19,8 @@ app = FastAPI(debug=True)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "http://localhost:5173",
-    "https://ai-pdf-qa.vercel.app"
+        "http://localhost:5173",
+        "https://ai-pdf-qa-three.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
