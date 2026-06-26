@@ -1,32 +1,32 @@
+import "./App.css";
 import Upload from "./components/Upload";
-
 import Chat from "./components/Chat";
 
 
 function App(){
 
+return(
+<div className="container">
 
-return (
+<h1>🤖 AI PDF Q&A</h1>
 
-<div>
+<p className="subtitle">
+Upload your PDF and ask anything
+</p>
 
-
-<h1>
-AI PDF Q&A
-</h1>
-
-
-<Upload/>
+<div className="card">
+<Upload />
+</div>
 
 
-<Chat/>
+<div className="card">
+<Chat />
+</div>
 
 
 </div>
-
 )
 
 }
-
 
 export default App;

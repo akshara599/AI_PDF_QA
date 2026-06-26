@@ -1,54 +1,72 @@
 import axios from "axios";
+import {useState} from "react";
 
 
 function Upload(){
 
-    const uploadPDF = async(e)=>{
-
-        const file = e.target.files[0];
-
-        const formData = new FormData();
-
-        formData.append(
-            "file",
-            file
-        );
+const [status,setStatus]=useState("");
 
 
-        const response = await axios.post(
-
-            `${import.meta.env.VITE_BACKEND_URL}/upload`,
-
-            formData
-
-        );
+const uploadPDF = async(e)=>{
 
 
-        console.log(response.data);
-
-    }
+const file=e.target.files[0];
 
 
-    return (
+const formData=new FormData();
 
-        <div>
-
-            <h2>
-                Upload PDF
-            </h2>
+formData.append("file",file);
 
 
-            <input
+setStatus("Uploading PDF...");
 
-                type="file"
 
-                onChange={uploadPDF}
+const response=await axios.post(
 
-            />
+`${import.meta.env.VITE_BACKEND_URL}/upload`,
 
-        </div>
+formData
 
-    )
+);
+
+
+console.log(response.data);
+
+
+setStatus("✅ PDF Ready for questions");
+
+
+}
+
+
+
+return(
+
+<div>
+
+
+<h2>
+📄 Upload PDF
+</h2>
+
+
+<input
+
+type="file"
+
+onChange={uploadPDF}
+
+/>
+
+
+<p>{status}</p>
+
+
+</div>
+
+
+)
+
 
 }
 

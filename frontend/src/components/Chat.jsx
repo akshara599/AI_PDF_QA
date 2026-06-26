@@ -4,63 +4,98 @@ import axios from "axios";
 
 function Chat(){
 
-    const [question,setQuestion] = useState("");
-    const [answer,setAnswer] = useState("");
+
+const [question,setQuestion]=useState("");
+
+const [answer,setAnswer]=useState("");
+
+const [loading,setLoading]=useState(false);
 
 
-    const askQuestion = async()=>{
+
+const askQuestion=async()=>{
 
 
-        const response = await axios.post(
-
-            `${import.meta.env.VITE_BACKEND_URL}/chat`,
-
-            {
-                question: question
-            }
-
-        );
+setLoading(true);
 
 
-        setAnswer(response.data.answer);
+const response=await axios.post(
 
-    }
+`${import.meta.env.VITE_BACKEND_URL}/chat`,
 
+{
+question
+}
 
-    return (
-
-        <div>
-
-
-            <h2>
-                Ask PDF
-            </h2>
+);
 
 
-            <input
-
-                value={question}
-
-                onChange={(e)=>setQuestion(e.target.value)}
-
-                placeholder="Ask something..."
-
-            />
+setAnswer(response.data.answer);
 
 
-            <button onClick={askQuestion}>
-                Ask
-            </button>
+setLoading(false);
 
 
-            <h3>
-                {answer}
-            </h3>
+}
 
 
-        </div>
 
-    )
+return(
+
+<div>
+
+
+<h2>
+💬 Ask PDF
+</h2>
+
+
+<div className="chatBox">
+
+
+<input
+
+placeholder="Ask something..."
+
+value={question}
+
+onChange={(e)=>setQuestion(e.target.value)}
+
+/>
+
+
+<button onClick={askQuestion}>
+Ask
+</button>
+
+
+</div>
+
+
+{
+
+loading ?
+
+<p>
+Thinking...
+</p>
+
+:
+
+<div className="answer">
+
+{answer}
+
+</div>
+
+}
+
+
+
+</div>
+
+)
+
 
 }
 
