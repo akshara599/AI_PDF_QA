@@ -1,88 +1,66 @@
 import {useState} from "react";
-
 import axios from "axios";
 
 
 function Chat(){
 
-
-const [question,setQuestion]=useState("");
-
-const [answer,setAnswer]=useState("");
+    const [question,setQuestion] = useState("");
+    const [answer,setAnswer] = useState("");
 
 
-
-const askQuestion=async()=>{
-
-
-const response = await axios.post(
-
-"http://127.0.0.1:8000/chat",
-
-null,
-
-{
-params:{
-question:question
-}
-}
-
-);
+    const askQuestion = async()=>{
 
 
-setAnswer(
-response.data.answer
-);
+        const response = await axios.post(
+
+            `${import.meta.env.VITE_BACKEND_URL}/chat`,
+
+            {
+                question: question
+            }
+
+        );
 
 
-}
+        setAnswer(response.data.answer);
+
+    }
 
 
+    return (
 
-return(
-
-<div>
-
-
-<h2>
-Ask Question
-</h2>
+        <div>
 
 
-<input
-
-value={question}
-
-onChange={(e)=>
-setQuestion(e.target.value)
-}
-
-/>
+            <h2>
+                Ask PDF
+            </h2>
 
 
-<button onClick={askQuestion}>
+            <input
 
-Ask
+                value={question}
 
-</button>
+                onChange={(e)=>setQuestion(e.target.value)}
 
+                placeholder="Ask something..."
 
-<h3>
-Answer:
-</h3>
-
-
-<p>
-
-{answer}
-
-</p>
+            />
 
 
-</div>
+            <button onClick={askQuestion}>
+                Ask
+            </button>
 
 
-)
+            <h3>
+                {answer}
+            </h3>
+
+
+        </div>
+
+    )
 
 }
 

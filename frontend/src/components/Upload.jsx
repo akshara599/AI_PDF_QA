@@ -5,12 +5,9 @@ function Upload(){
 
     const uploadPDF = async(e)=>{
 
-
         const file = e.target.files[0];
 
-
         const formData = new FormData();
-
 
         formData.append(
             "file",
@@ -20,7 +17,7 @@ function Upload(){
 
         const response = await axios.post(
 
-            "http://127.0.0.1:8000/upload",
+            `${import.meta.env.VITE_BACKEND_URL}/upload`,
 
             formData
 
@@ -30,7 +27,6 @@ function Upload(){
         console.log(response.data);
 
     }
-
 
 
     return (
