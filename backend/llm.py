@@ -45,7 +45,7 @@ Answer:
 
 
     model = genai.GenerativeModel(
-        "gemini-2.5-flash"
+        "gemini-1.5-flash"
     )
 
 
