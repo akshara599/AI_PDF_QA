@@ -1,15 +1,15 @@
 import os
-from dotenv import load_dotenv
 import google.generativeai as genai
 
 
-# Load environment variables
-load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+
+if not api_key:
+    raise Exception("GEMINI_API_KEY missing")
 
 
-# Configure Gemini API
 genai.configure(
-    api_key=os.getenv("GEMINI_API_KEY")
+    api_key=api_key
 )
 
 
@@ -18,10 +18,9 @@ def ask_gemini(context, question):
     prompt = f"""
 You are an AI assistant.
 
-Answer the question using only the provided context.
+Answer only from the document context.
 
-If the answer is not present in the context,
-say:
+If answer is not present:
 "I could not find this information in the document."
 
 
@@ -33,9 +32,6 @@ Context:
 Question:
 
 {question}
-
-
-Answer:
 """
 
 
@@ -44,9 +40,7 @@ Answer:
     )
 
 
-    response = model.generate_content(
-        prompt
-    )
+    response = model.generate_content(prompt)
 
 
     return response.text
