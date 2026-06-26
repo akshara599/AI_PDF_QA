@@ -1,14 +1,18 @@
+print("🚀 FastAPI starting - lightweight mode")
+
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import shutil
 import os
 
+# IMPORTANT: avoid heavy imports at startup where possible
 from pdf_loader import extract_text
 from text_splitter import split_text
-from vector_store import create_vector_store, load_vector_store
-from llm import ask_gemini
 
+# vector store will be used lazily inside endpoints
+# from vector_store import create_vector_store, load_vector_store
+from llm import ask_gemini
 
 app = FastAPI()
 
@@ -35,7 +39,7 @@ class ChatRequest(BaseModel):
 # ---------------- ROOT ----------------
 @app.get("/")
 def home():
-    return {"message": "AI PDF Q&A Running"}
+    return {"message": "AI PDF Q&A Running 🚀"}
 
 
 # ---------------- UPLOAD PDF ----------------
@@ -50,10 +54,12 @@ async def upload_pdf(file: UploadFile = File(...)):
     # Extract text
     text = extract_text(file_path)
 
-    # Split into chunks
+    # Split into chunks (keep this optimized in your splitter)
     chunks = split_text(text)
 
-    # 🔥 CREATE CHROMA DB (PERSISTENT)
+    # ⚡ IMPORT HERE (lazy import prevents startup OOM)
+    from vector_store import create_vector_store
+
     create_vector_store(chunks)
 
     return {
@@ -67,16 +73,18 @@ async def upload_pdf(file: UploadFile = File(...)):
 @app.post("/chat")
 async def chat(req: ChatRequest):
 
-    # 🔥 LOAD CHROMA DB FROM DISK
+    # ⚡ LAZY IMPORT (VERY IMPORTANT for Render memory)
+    from vector_store import load_vector_store
+
     vector_db = load_vector_store()
 
     if vector_db is None:
         return {"error": "Please upload PDF first"}
 
-    # Similarity search
-    docs = vector_db.similarity_search(req.question, k=3)
+    # Similarity search (limit k = lower memory + faster)
+    docs = vector_db.similarity_search(req.question, k=2)
 
-    # Build context
+    # Build context (keep small for token + memory efficiency)
     context = "\n".join([doc.page_content for doc in docs])
 
     # Ask Gemini
