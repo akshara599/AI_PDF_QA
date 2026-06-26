@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import shutil
 import os
-
+import traceback
 # IMPORTANT: avoid heavy imports at startup where possible
 from pdf_loader import extract_text
 from text_splitter import split_text
@@ -14,8 +14,7 @@ from text_splitter import split_text
 # from vector_store import create_vector_store, load_vector_store
 from llm import ask_gemini
 
-app = FastAPI()
-
+app = FastAPI(debug=True)
 # ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
@@ -46,51 +45,59 @@ def home():
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
 
-    file_path = f"uploads/{file.filename}"
+    try:
+        file_path = f"uploads/{file.filename}"
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    # Extract text
-    text = extract_text(file_path)
+        text = extract_text(file_path)
 
-    # Split into chunks (keep this optimized in your splitter)
-    chunks = split_text(text)
+        chunks = split_text(text)
 
-    # ⚡ IMPORT HERE (lazy import prevents startup OOM)
-    from vector_store import create_vector_store
+        from vector_store import create_vector_store
 
-    create_vector_store(chunks)
+        create_vector_store(chunks)
 
-    return {
-        "filename": file.filename,
-        "chunks": len(chunks),
-        "message": "PDF processed successfully"
-    }
+        return {
+            "filename": file.filename,
+            "chunks": len(chunks),
+            "message": "PDF processed successfully"
+        }
 
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "error": str(e)
+        }
 
 # ---------------- CHAT ----------------
 @app.post("/chat")
 async def chat(req: ChatRequest):
+    try:
+        # ⚡ LAZY IMPORT (VERY IMPORTANT for Render memory)
+        from vector_store import load_vector_store
 
-    # ⚡ LAZY IMPORT (VERY IMPORTANT for Render memory)
-    from vector_store import load_vector_store
+        vector_db = load_vector_store()
 
-    vector_db = load_vector_store()
+        if vector_db is None:
+            return {"error": "Please upload PDF first"}
 
-    if vector_db is None:
-        return {"error": "Please upload PDF first"}
+        # Similarity search (limit k = lower memory + faster)
+        docs = vector_db.similarity_search(req.question, k=2)
 
-    # Similarity search (limit k = lower memory + faster)
-    docs = vector_db.similarity_search(req.question, k=2)
+        # Build context (keep small for token + memory efficiency)
+        context = "\n".join([doc.page_content for doc in docs])
 
-    # Build context (keep small for token + memory efficiency)
-    context = "\n".join([doc.page_content for doc in docs])
+        # Ask Gemini
+        answer = ask_gemini(context, req.question)
 
-    # Ask Gemini
-    answer = ask_gemini(context, req.question)
-
-    return {
-        "question": req.question,
-        "answer": answer
-    }
+        return {
+            "question": req.question,
+            "answer": answer
+        }
+    except Exception as e:
+        traceback.print_exc()
+        return {
+            "error": str(e)
+        }
