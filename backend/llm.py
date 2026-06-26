@@ -1,8 +1,14 @@
 import os
+from dotenv import load_dotenv
 import google.generativeai as genai
 
 
+# Load .env file
+load_dotenv()
+
+
 api_key = os.getenv("GEMINI_API_KEY")
+
 
 if not api_key:
     raise Exception("GEMINI_API_KEY missing")
@@ -32,6 +38,9 @@ Context:
 Question:
 
 {question}
+
+
+Answer:
 """
 
 
