@@ -1,30 +1,21 @@
 import os
-
 from dotenv import load_dotenv
-
-from google import genai
-
+import google.generativeai as genai
 
 
 # Load environment variables
 load_dotenv()
 
 
-
-# Create Gemini client
-client = genai.Client(
-
+# Configure Gemini API
+genai.configure(
     api_key=os.getenv("GEMINI_API_KEY")
-
 )
-
 
 
 def ask_gemini(context, question):
 
-
     prompt = f"""
-
 You are an AI assistant.
 
 Answer the question using only the provided context.
@@ -45,16 +36,16 @@ Question:
 
 
 Answer:
-
 """
 
 
-    response = client.models.generate_content(
+    model = genai.GenerativeModel(
+        "gemini-2.5-flash"
+    )
 
-        model="gemini-2.5-flash",
 
-        contents=prompt
-
+    response = model.generate_content(
+        prompt
     )
 
 
