@@ -3,30 +3,22 @@ import Upload from "./components/Upload";
 import Chat from "./components/Chat";
 
 
-function App(){
+function App() {
+  return (
+    <div className="container">
+      <h1>🤖 AI PDF Q&A</h1>
+      <p className="subtitle">
+        Upload your PDF and ask anything
+      </p>
 
-return(
-<div className="container">
+      <div className="card">
+        <Upload />
+      </div>
 
-<h1>🤖 AI PDF Q&A</h1>
-
-<p className="subtitle">
-Upload your PDF and ask anything
-</p>
-
-<div className="card">
-<Upload />
-</div>
-
-
-<div className="card">
-<Chat />
-</div>
-
-
-</div>
-)
-
+      <div className="card">
+        <Chat />
+      </div>
+    </div>
+  );
 }
-
 export default App;
