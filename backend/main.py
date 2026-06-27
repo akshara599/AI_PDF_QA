@@ -9,7 +9,8 @@ import traceback
 # IMPORTANT: avoid heavy imports at startup where possible
 from pdf_loader import extract_text
 from text_splitter import split_text
-
+from database import history_collection
+from datetime import datetime
 # vector store will be used lazily inside endpoints
 # from vector_store import create_vector_store, load_vector_store
 from llm import ask_gemini
@@ -33,8 +34,7 @@ os.makedirs("uploads", exist_ok=True)
 # ---------------- REQUEST MODEL ----------------
 class ChatRequest(BaseModel):
     question: str
-
-
+    user_id: str
 # ---------------- ROOT ----------------
 @app.get("/")
 def home():
@@ -92,12 +92,40 @@ async def chat(req: ChatRequest):
         # Ask Gemini
         answer = ask_gemini(context, req.question)
 
-        return {
+        history_collection.insert_one({
+
+            "user_id": req.user_id,
+
             "question": req.question,
+
+            "answer": answer,
+
+            "time": datetime.now()
+
+        })
+        return {
+
+            "question": req.question,
+
             "answer": answer
+
         }
     except Exception as e:
         traceback.print_exc()
         return {
             "error": str(e)
         }
+@app.get("/history/{user_id}")
+def get_history(user_id:str):
+
+    chats = history_collection.find(
+        {
+            "user_id": user_id
+        },
+        {
+            "_id":0
+        }
+    )
+
+
+    return list(chats)
