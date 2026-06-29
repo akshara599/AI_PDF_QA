@@ -1,21 +1,22 @@
 print("🚀 FastAPI starting - lightweight mode")
 
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List
 import shutil
 import os
 import traceback
-# IMPORTANT: avoid heavy imports at startup where possible
+from datetime import datetime
+
 from pdf_loader import extract_text
 from text_splitter import split_text
 from database import history_collection
-from datetime import datetime
-# vector store will be used lazily inside endpoints
-# from vector_store import create_vector_store, load_vector_store
 from llm import ask_gemini
 
-app = FastAPI(debug=True)
+# ---------------- APP INIT ----------------
+app = FastAPI(debug=True, openapi_version="3.0.2")
+
 # ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
@@ -28,13 +29,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------- FOLDERS ----------------
+# ---------------- FOLDER ----------------
 os.makedirs("uploads", exist_ok=True)
 
 # ---------------- REQUEST MODEL ----------------
 class ChatRequest(BaseModel):
     question: str
     user_id: str
+
+
 # ---------------- ROOT ----------------
 @app.get("/")
 def home():
@@ -43,89 +46,95 @@ def home():
 
 # ---------------- UPLOAD PDF ----------------
 @app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
-
+async def upload_pdf(files: List[UploadFile] = File(...)):
     try:
-        file_path = f"uploads/{file.filename}"
+        all_chunks = []
 
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        for file in files:
+            file_path = f"uploads/{file.filename}"
 
-        text = extract_text(file_path)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
 
-        chunks = split_text(text)
+            text = extract_text(file_path)
+            chunks = split_text(text)
 
+            if chunks:
+                all_chunks.extend(chunks)
+
+        if not all_chunks:
+            raise HTTPException(
+                status_code=400,
+                detail="No text found in uploaded PDFs"
+            )
+
+        # lazy import
         from vector_store import create_vector_store
 
-        create_vector_store(chunks)
+        create_vector_store(all_chunks)
 
         return {
-            "filename": file.filename,
-            "chunks": len(chunks),
-            "message": "PDF processed successfully"
+            "files_uploaded": len(files),
+            "total_chunks": len(all_chunks),
+            "message": "Multiple PDFs processed successfully"
         }
 
     except Exception as e:
         traceback.print_exc()
-        return {
-            "error": str(e)
-        }
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ---------------- CHAT ----------------
 @app.post("/chat")
 async def chat(req: ChatRequest):
     try:
-        # ⚡ LAZY IMPORT (VERY IMPORTANT for Render memory)
+        if not req.question.strip():
+            raise HTTPException(status_code=400, detail="Question cannot be empty")
+
         from vector_store import load_vector_store
 
         vector_db = load_vector_store()
 
         if vector_db is None:
-            return {"error": "Please upload PDF first"}
+            raise HTTPException(status_code=400, detail="Please upload PDF first")
 
-        # Similarity search (limit k = lower memory + faster)
-        docs = vector_db.similarity_search(req.question, k=2)
+        docs = vector_db.similarity_search(
+            req.question,
+            k=6
+        )
 
-        # Build context (keep small for token + memory efficiency)
-        context = "\n".join([doc.page_content for doc in docs])
+        context = "\n".join(doc.page_content for doc in docs)
 
-        # Ask Gemini
         answer = ask_gemini(context, req.question)
 
         history_collection.insert_one({
-
             "user_id": req.user_id,
-
             "question": req.question,
-
             "answer": answer,
-
-            "time": datetime.now()
-
+            "time": datetime.utcnow()
         })
+
         return {
-
             "question": req.question,
-
             "answer": answer
-
         }
+
+    except HTTPException as he:
+        raise he
+
     except Exception as e:
         traceback.print_exc()
-        return {
-            "error": str(e)
-        }
+        raise HTTPException(status_code=500, detail=str(e))
+# ---------------- HISTORY ----------------
 @app.get("/history/{user_id}")
-def get_history(user_id:str):
+def get_history(user_id: str):
+    try:
+        chats = history_collection.find(
+            {"user_id": user_id},
+            {"_id": 0}
+        )
+        return list(chats)
 
-    chats = history_collection.find(
-        {
-            "user_id": user_id
-        },
-        {
-            "_id":0
-        }
-    )
-
-
-    return list(chats)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
