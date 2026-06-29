@@ -10,22 +10,44 @@ const [status,setStatus]=useState("");
 const uploadPDF = async(e)=>{
 
 
-const file=e.target.files[0];
+const selectedFiles = Array.from(e.target.files);
 
 
-const formData=new FormData();
-
-formData.append("file",file);
-
-
-setStatus("Uploading PDF...");
+if(selectedFiles.length === 0){
+    return;
+}
 
 
-const response=await axios.post(
+const formData = new FormData();
+
+
+selectedFiles.forEach((file)=>{
+
+    formData.append(
+        "files",
+        file
+    );
+
+});
+
+
+setStatus("Uploading PDFs...");
+
+
+try{
+
+
+const response = await axios.post(
 
 `${import.meta.env.VITE_BACKEND_URL}/upload`,
 
-formData
+formData,
+
+{
+headers:{
+"Content-Type":"multipart/form-data"
+}
+}
 
 );
 
@@ -33,7 +55,21 @@ formData
 console.log(response.data);
 
 
-setStatus("✅ PDF Ready for questions");
+setStatus(
+`✅ ${selectedFiles.length} PDFs Ready for questions`
+);
+
+
+}
+
+catch(error){
+
+console.log(error.response?.data || error.message);
+
+setStatus("❌ Upload failed");
+
+}
+
 
 
 }
@@ -46,13 +82,17 @@ return(
 
 
 <h2>
-📄 Upload PDF
+📄 Upload PDFs
 </h2>
 
 
 <input
 
 type="file"
+
+multiple
+
+accept=".pdf"
 
 onChange={uploadPDF}
 
@@ -63,7 +103,6 @@ onChange={uploadPDF}
 
 
 </div>
-
 
 )
 
